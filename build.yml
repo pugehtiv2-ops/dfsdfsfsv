@@ -1,0 +1,27 @@
+name: build
+on: [push, workflow_dispatch]
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with: { distribution: temurin, java-version: 21 }
+      - uses: gradle/actions/setup-gradle@v4
+        with: { gradle-version: 9.2.1 }
+      - name: find project
+        run: |
+          if [ -f settings.gradle ]; then dir=.; else dir="$(dirname "$(find . -name settings.gradle -not -path './.git/*' | head -1)")"; fi
+          echo "PROJECT_DIR=$dir" >> "$GITHUB_ENV"
+          echo "project dir: $dir"
+          echo "ClickGui uses Button.builder: $(grep -c 'Button.builder' "$dir/src/main/java/dev/pug/ClickGui.java")"
+          echo "version line: $(grep -n "^version" "$dir/build.gradle")"
+      - name: build
+        working-directory: ${{ env.PROJECT_DIR }}
+        run: |
+          gradle build --no-daemon --stacktrace
+          ls -la build/libs
+      - uses: actions/upload-artifact@v4
+        with:
+          name: pugclient-1.1.0-run${{ github.run_number }}
+          path: "**/build/libs/pugclient-1.1.0-mc1.21.11.jar"
